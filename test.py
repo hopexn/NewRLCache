@@ -1,10 +1,5 @@
-import numpy as np
-import pandas as pd
-
-from agents.RandomAgent import RandomAgent
-from core.Cache import Cache
 from core.Request import RequestLoader
-from core.CacheEnv import CacheEnv
+from envs.CacheEnv import CacheEnv
 
 loader = RequestLoader(path="../RLCache/data/zipf", time_slot_length=10)
 

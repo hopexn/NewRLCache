@@ -21,7 +21,7 @@ class RequestLoader:
         self.ptr = 0  # 指向下一个时间片请求序列的开始
         self.nb_requests = len(self.requests)  # 序列总数
     
-    def next(self):
+    def next_time_slot(self):
         ptr_begin = self.ptr
         time_slot_begin = self.requests.loc[ptr_begin, 'timestamp']
         time_slot_end = time_slot_begin + self.time_slot_length
@@ -34,6 +34,13 @@ class RequestLoader:
         
         requests_slice = self.requests.loc[ptr_begin:ptr_end - 1, 'video_id']
         return np.array(requests_slice)
+    
+    def next(self):
+        if not self.finished():
+            request = self.requests.loc[self.ptr, 'video_id']
+        else:
+            request = -1
+        return request
     
     def finished(self):
         return self.ptr >= self.nb_requests
