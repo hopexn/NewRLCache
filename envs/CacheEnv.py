@@ -8,9 +8,9 @@ from core.Request import RequestLoader
 
 
 class CacheEnv:
-    def __init__(self, capacity, loader: RequestLoader, top_k):
+    def __init__(self, capacity, request_path, top_k, time_slot_length):
         self.capacity = capacity
-        self.loader = loader
+        self.loader = RequestLoader(request_path, time_slot_length)
         self.cache = Cache(capacity)
         self.top_k = top_k
     
@@ -31,14 +31,12 @@ class CacheEnv:
         print("Cache content: {}".format(self.cache.get_content()))
         print("Top K missed videos: {}".format(top_k_missed_videos))
         
-        all_candidates = np.concatenate([self.cache.entries, top_k_missed_videos])
-        
-        new_cache_content = set(self._get_new_cache_content(all_candidates))
+        new_cache_content = set(self._get_new_cache_content(self.cache.get_content(), top_k_missed_videos))
         old_cache_content = set(self.cache.get_content())
         
         old_elements = old_cache_content.difference(new_cache_content)
         new_elements = new_cache_content.difference(old_cache_content)
-        assert len(old_elements) != len(new_elements)
+        assert len(old_elements) == len(new_elements)
         for new_element, old_element in zip(new_elements, old_elements):
             self.cache.update(new_element, old_element)
         
@@ -64,7 +62,7 @@ class CacheEnv:
         
         return top_k_missed_videos, hit_mask
     
-    def _get_new_cache_content(self, all_candidates):
+    def _get_new_cache_content(self, cache_content, top_k_missed_videos):
         raise NotImplementedError
     
     def before_step(self):

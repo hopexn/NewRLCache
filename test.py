@@ -1,10 +1,14 @@
-from core.Request import RequestLoader
-from envs.CacheEnv import CacheEnv
+from envs import *
 
-loader = RequestLoader(path="../RLCache/data/zipf", time_slot_length=10)
+cache_env = LfuCacheEnv(capacity=10, request_path="../RLCache/data/zipf", top_k=5, time_slot_length=100)
+cache_env.reset()
 
+print(cache_env.cache.get_content())
 
-cache_env = CacheEnv(10, loader, 3)
-cache_env.warm_up()
-print(cache_env.cache.video_indices)
-cache_env.step()
+sum_hit_rate = 0
+nb_steps = 1000
+for i in range(nb_steps):
+    hit_rate = cache_env.step()
+    sum_hit_rate += hit_rate
+
+print("hit rate: {}".format(sum_hit_rate / nb_steps))

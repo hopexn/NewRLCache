@@ -3,59 +3,42 @@ import numpy as np
 
 class Cache:
     def __init__(self, capacity):
-        self.capacity = capacity
+        self.capacity = capacity  # Cache容量
         
-        # 写入计数
-        self.write_count = 0
-        
-        # Cache中每一项分别保存视频ID
+        # Cache中的内容，每一行表示一个元素的ID
         self.entries = np.zeros(shape=(capacity,), dtype=np.int) - 1
         
-        # 用于记录缓存的先后顺序
-        self.write_counts = np.zeros(shape=(capacity,), dtype=np.int) - 1
-        
-        # 视频在缓存中的位置映射
-        self.video_indices = dict()
+        self.indices = dict()  # 内容位置字典，用于查找元素的位置
     
-    def __len__(self):
-        return len(self.video_indices)
+    def clear(self):
+        self.entries[:] = -1
+        self.indices.clear()
     
-    def full(self):
-        return len(self.video_indices) >= self.capacity
+    def length(self):
+        return len(self.indices)
     
-    def find(self, video_id):
+    def is_full(self):
+        return self.length() >= self.capacity
+    
+    def find(self, element_id):
         """
-        在缓存中查找视频，若存在返回视频所在位置，若不存在则返回-1
-        :param video_id: 待查找的视频的ID
-        :return: 视频所在位置 或 -1（不存在）
+        :param element_id: 目标元素的id
+        :return: 如果元素在Cache中返回True，否则返回False
         """
-        if video_id not in self.video_indices:
-            return -1
+        return element_id in self.indices
+    
+    def update(self, new_element, old_element=-1):
+        if old_element == -1:
+            assert self.length() < self.capacity
+            element_idx = self.length()
+            self.indices[new_element] = element_idx
+            self.entries[element_idx] = new_element
         else:
-            return self.video_indices[video_id]
+            assert self.find(old_element)
+            element_idx = self.indices[old_element]
+            del self.indices[old_element]
+            self.indices[new_element] = element_idx
+            self.entries[element_idx] = new_element
     
-    def get(self, position):
-        """
-        访问缓存中指定位置的一个视频
-        :param position:  访问视频的位置
-        :return: 指定位置的视频
-        """
-        return self.entries[position]  # 返回访问视频的内容
-    
-    def put(self, position, video_id):
-        """
-        将视频存放在指定位置
-        :param video_id:  待放置的视频
-        :param position:  视频放置的位置
-        :return: None
-        """
-        
-        video_id_old = self.entries[position]
-        if video_id_old in self.video_indices:
-            del self.video_indices[video_id_old]
-        
-        self.video_indices[video_id] = position
-        self.entries[position] = video_id  # 视频ID
-        self.write_counts[position] = self.write_count
-        
-        self.write_count += 1
+    def get_content(self):
+        return self.entries
