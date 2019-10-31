@@ -1,7 +1,7 @@
 class Agent:
     def __init__(self):
         self.action = None
-
+    
     def forward(self, observation):
         raise NotImplementedError
 

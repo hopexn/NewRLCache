@@ -3,7 +3,7 @@ from rl.random import OrnsteinUhlenbeckProcess
 
 from agents.Agent import Agent
 from core.Memory import Memory
-from core.utils import *
+from utils.utils import *
 
 
 class DDPGAgent(Agent):
@@ -43,7 +43,8 @@ class DDPGAgent(Agent):
         observation_tensor = tf.keras.layers.Input(shape=self.observation_shape, dtype=tf.float64)
         
         # 创建Actor模型
-        y = tf.keras.layers.Dense(32, activation='relu')(observation_tensor)
+        y = tf.keras.layers.Flatten()(observation_tensor)
+        y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(self.nb_actions, activation='tanh')(y)

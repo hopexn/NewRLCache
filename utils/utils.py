@@ -1,4 +1,8 @@
+import os
+
+import keras.backend.tensorflow_backend as KTF
 import numba as nb
+import tensorflow as tf
 
 # 全局变量
 NUM_FILTERS = 10
@@ -21,3 +25,15 @@ def polyak_averaging(weights_list, target_weights_list, polyak):
         new_target_weights_list.append(new_target_weights)
     
     return new_target_weights_list
+
+
+def init_tf():
+    # 指定第一块GPU可用
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    
+    tf.enable_eager_execution()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True  # 不全部占满显存, 按需分配
+    sess = tf.Session(config=config)
+    
+    KTF.set_session(sess)

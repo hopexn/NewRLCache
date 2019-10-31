@@ -1,8 +1,9 @@
+import numpy as np
 import tensorflow as tf
 
 from agents.Agent import Agent
 from core.Memory import Memory
-from core.utils import *
+from utils.utils import *
 
 
 class TD3Agent(Agent):
@@ -11,18 +12,28 @@ class TD3Agent(Agent):
                  observation_space,
                  gamma=0.99,
                  nb_steps_warmup=2000,
+                 sigma=0.3,
+                 polyak=0.995,
+                 pi_lr=0.001,
+                 q_lr=0.001,
+                 batch_size=100,
+                 action_noise=0.1,
+                 target_noise=0.2,
+                 noise_clip=0.5,
+                 policy_delay=2,
+                 memory_size=10000,
                  training=True):
         super().__init__()
         self.gamma = gamma
-        self.sigma = 0.3
-        self.polyak = 0.995
-        self.pi_lr = 0.001
-        self.q_lr = 0.001
-        self.batch_size = 100
-        self.action_noise = 0.1
-        self.target_noise = 0.2
-        self.noise_clip = 0.5
-        self.policy_delay = 2
+        self.sigma = sigma
+        self.polyak = polyak
+        self.pi_lr = pi_lr
+        self.q_lr = q_lr
+        self.batch_size = batch_size
+        self.action_noise = action_noise
+        self.target_noise = target_noise
+        self.noise_clip = noise_clip
+        self.policy_delay = policy_delay
         
         self.action_space = action_space
         self.nb_actions = action_space.shape[0]
@@ -30,7 +41,7 @@ class TD3Agent(Agent):
         self.nb_steps_warmup = nb_steps_warmup
         self.training = training
         
-        self.memory = Memory(capacity=10000,
+        self.memory = Memory(capacity=memory_size,
                              observation_shape=self.observation_shape,
                              action_shape=self.action_space.shape)
         
@@ -49,7 +60,8 @@ class TD3Agent(Agent):
         observation_tensor = tf.keras.layers.Input(shape=self.observation_shape, dtype=tf.float64)
         
         # 创建Actor模型
-        y = tf.keras.layers.Dense(32, activation='relu')(observation_tensor)
+        y = tf.keras.layers.Flatten()(observation_tensor)
+        y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(32, activation='relu')(y)
         y = tf.keras.layers.Dense(self.nb_actions, activation='tanh')(y)

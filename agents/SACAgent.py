@@ -3,7 +3,7 @@ import tensorflow as tf
 
 from agents.Agent import Agent
 from core.Memory import Memory
-from core.utils import *
+from utils.utils import *
 
 
 def gaussian_likelihood(x, mu, log_std):
@@ -17,23 +17,28 @@ class SACAgent(Agent):
                  action_space,
                  observation_space,
                  gamma=0.99,
-                 nb_steps_warmup=2000):
+                 nb_steps_warmup=2000,
+                 alpha=0.2,
+                 polyak=0.995,
+                 lr=3e-4,
+                 log_std_min=-20,
+                 log_std_max=2,
+                 memory_size=10000
+                 ):
         super().__init__()
         self.action_space = action_space
         self.observation_space = observation_space
         self.gamma = gamma
-        self.alpha = 0.2
-        self.polyak = 0.995
+        self.alpha = alpha
+        self.polyak = polyak
         self.nb_steps_warmup = nb_steps_warmup
-        self.value_network_lr = 3e-4
-        self.soft_q_network_lr = 3e-4
-        self.policy_network_lr = 3e-4
+        self.lr = lr
         self.step_count = 0
-        self.log_std_min = -20
-        self.log_std_max = 2
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
         self.min_entropy = -self.action_space.shape[0]
         
-        self.memory = Memory(capacity=10000,
+        self.memory = Memory(capacity=memory_size,
                              observation_shape=observation_space.shape,
                              action_shape=action_space.shape)
         
@@ -45,8 +50,6 @@ class SACAgent(Agent):
         self.soft_q_net2 = self._build_soft_q_network()
         
         self.policy_net = self._build_policy_network()
-        
-        self.normal = tf.distributions.Normal(loc=0., scale=1.)
     
     def forward(self, observation):
         self.step_count += 1
@@ -68,12 +71,12 @@ class SACAgent(Agent):
         if self.step_count >= self.nb_steps_warmup:
             self._update()
             
-            new_target_weigths = polyak_averaging(
+            new_target_weights = polyak_averaging(
                 self.value_net.get_weights(),
                 self.target_value_net.get_weights(),
                 self.polyak
             )
-            self.target_value_net.set_weights(new_target_weigths)
+            self.target_value_net.set_weights(new_target_weights)
     
     def _update(self):
         observations, actions, rewards, terminals, next_observations = self.memory.sample_batch()
@@ -127,12 +130,13 @@ class SACAgent(Agent):
         layers = tf.keras.layers
         
         model = tf.keras.models.Sequential([
-            layers.Dense(32, activation='relu', input_shape=observation_shape),
+            layers.Flatten(input_shape=observation_shape),
+            layers.Dense(32, activation='relu'),
             layers.Dense(32, activation='relu'),
             layers.Dense(32, activation='relu'),
             layers.Dense(1)
         ])
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.value_network_lr))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.lr))
         
         return model
     
@@ -144,14 +148,15 @@ class SACAgent(Agent):
         observation_tensor = layers.Input(shape=observation_shape)
         action_tensor = layers.Input(shape=(nb_actions,))
         
-        y = layers.Concatenate()([observation_tensor, action_tensor])
+        observation_tensor_flattened = layers.Flatten()(observation_tensor)
+        y = layers.Concatenate()([observation_tensor_flattened, action_tensor])
         y = layers.Dense(32, activation='relu')(y)
         y = layers.Dense(32, activation='relu')(y)
         y = layers.Dense(32, activation='relu')(y)
         y = layers.Dense(1)(y)
         
         model = tf.keras.models.Model(inputs=[observation_tensor, action_tensor], outputs=y)
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.soft_q_network_lr))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(lr=self.lr))
         
         return model
     
@@ -161,7 +166,8 @@ class SACAgent(Agent):
         
         layers = tf.keras.layers
         observation_tensor = layers.Input(shape=observation_shape)
-        y = layers.Dense(32, activation='relu')(observation_tensor)
+        y = layers.Flatten()(observation_tensor)
+        y = layers.Dense(32, activation='relu')(y)
         y = layers.Dense(32, activation='relu')(y)
         y = layers.Dense(32, activation='relu')(y)
         
@@ -171,6 +177,6 @@ class SACAgent(Agent):
         log_std = self.log_std_min + 0.5 * (self.log_std_max - self.log_std_min) * (log_std + 1)
         
         model = tf.keras.models.Model(inputs=observation_tensor, outputs=[mean, log_std])
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(self.policy_network_lr))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(self.lr))
         
         return model

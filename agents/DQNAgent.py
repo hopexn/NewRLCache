@@ -1,8 +1,8 @@
+import numpy as np
 import tensorflow as tf
 
 from agents.Agent import Agent
 from core.Memory import Memory
-from core.utils import *
 
 
 class DQNAgent(Agent):
@@ -11,18 +11,18 @@ class DQNAgent(Agent):
                  action_space,
                  observation_space,
                  gamma=0.99,
-                 target_model_update=100):
+                 target_model_update=100,
+                 memory_size=10000):
         super().__init__()
         self.gamma = gamma
         self.action_space = action_space
         self.observation_space = observation_space
         
         self.nb_actions = action_space.n
-        self.action_shape = (1,)
         self.observation_shape = observation_space.shape
         self.target_model_update = target_model_update
         
-        self.memory = Memory(capacity=10000, action_shape=self.action_shape,
+        self.memory = Memory(capacity=memory_size, action_shape=(1,),
                              observation_shape=self.observation_shape)
         
         self.model = self._build_network()
@@ -33,7 +33,8 @@ class DQNAgent(Agent):
     
     def _build_network(self):
         model = tf.keras.Sequential([
-            tf.keras.layers.Dense(128, activation='relu', input_shape=self.observation_shape),
+            tf.keras.layers.Flatten(input_shape=self.observation_shape),
+            tf.keras.layers.Dense(128, activation='relu'),
             tf.keras.layers.Dense(32, activation='relu'),
             tf.keras.layers.Dense(self.nb_actions, activation='linear')
         ])

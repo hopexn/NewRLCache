@@ -2,6 +2,36 @@ import os
 
 import numpy as np
 import pandas as pd
+from numba import prange, jit
+
+
+@jit(nopython=True)
+def _get_historical_frequency(
+        frequencies,
+        historical_requests,
+        videos,
+        historical_pointers,  # historical_pointers的数量应该比num_time_steps多1
+        num_time_steps,
+        time_step,
+):
+    videos = videos.reshape(-1, 1)
+    
+    for i in prange(num_time_steps):
+        ptr_begin = historical_pointers[i]
+        ptr_end = historical_pointers[i + 1]
+        
+        if ptr_begin == ptr_end:
+            continue
+        
+        requests = historical_requests[ptr_begin:ptr_end].reshape(1, -1)
+        masks = np.equal(videos, requests)
+        
+        frequencies[:, i] = np.sum(masks, axis=1)
+    
+    # frequencies = (frequencies >= 1)
+    frequencies = frequencies / time_step
+    
+    return frequencies
 
 
 class RequestLoader:
@@ -74,5 +104,21 @@ class RequestLoader:
                                                              max(0, self.ptr - history_window_length): self.ptr]
         videos = np.expand_dims(videos, axis=1)
         history = np.expand_dims(history, axis=0)
-        frequencies = np.sum(videos == history, axis=1, keepdims=False)
+        frequencies = np.mean(videos == history, axis=1, keepdims=False)
+        return frequencies
+    
+    def get_frequencies2(self, videos, history_window_length_list: list):
+        max_length = np.max(history_window_length_list)
+        num_window_length = len(history_window_length_list)
+        
+        history = np.zeros((max_length,)) - 1
+        history[max(0, max_length - self.ptr):] = self.video_ids[
+                                                  max(0, self.ptr - max_length): self.ptr]
+        videos = np.expand_dims(videos, axis=1)
+        history = np.expand_dims(history, axis=0)
+        hit_mask = videos == history
+        frequencies = np.zeros((len(videos), num_window_length))
+        for idx, window_length in enumerate(history_window_length_list):
+            frequencies[:, idx] = np.mean(hit_mask[:, -window_length:], axis=1)
+        
         return frequencies

@@ -25,22 +25,16 @@ class CacheEnv:
     def step(self):
         # 获取一段时间内的请求
         requests = self.loader.next_time_slot()
-        top_k_missed_videos, hit_mask = self._handle_requests(requests)
+        top_k_missed_videos, hit_rate = self._handle_requests(requests)
         
-        # 打印当前缓存内容与候补
-        print("Cache content: {}".format(self.cache.get_content()))
-        print("Top K missed videos: {}".format(top_k_missed_videos))
-        
-        new_cache_content = set(self._get_new_cache_content(self.cache.get_content(), top_k_missed_videos))
         old_cache_content = set(self.cache.get_content())
+        new_cache_content = set(self._get_new_cache_content(self.cache.get_content(), top_k_missed_videos, hit_rate))
         
         old_elements = old_cache_content.difference(new_cache_content)
         new_elements = new_cache_content.difference(old_cache_content)
         assert len(old_elements) == len(new_elements)
         for new_element, old_element in zip(new_elements, old_elements):
             self.cache.update(new_element, old_element)
-        
-        hit_rate = hit_mask.mean()
         
         return hit_rate
     
@@ -60,9 +54,10 @@ class CacheEnv:
         top_k_missed_videos = missed_frequencies.sort_values('frequencies', ascending=False).iloc[:self.top_k]
         top_k_missed_videos = np.array(top_k_missed_videos['video_id'])
         
-        return top_k_missed_videos, hit_mask
+        hit_rate = hit_mask.mean()
+        return top_k_missed_videos, hit_rate
     
-    def _get_new_cache_content(self, cache_content, top_k_missed_videos):
+    def _get_new_cache_content(self, cache_content, top_k_missed_videos, hit_rate):
         raise NotImplementedError
     
     def before_step(self):

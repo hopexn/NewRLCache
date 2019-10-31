@@ -2,8 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from envs import *
+from utils.utils import *
 
-cache_env = DqnCacheEnv(capacity=10, request_path="./data/zipf", top_k=3, time_slot_length=50)
+init_tf()
+
+cache_env = SacCacheEnv(capacity=10, request_path="./data/zipf", top_k=3, time_slot_length=50)
 cache_env.reset()
 
 print(cache_env.cache.get_content())

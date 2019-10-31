@@ -5,4 +5,3 @@ from envs.LfuCacheEnv import LfuCacheEnv
 from envs.LruCacheEnv import LruCacheEnv
 from envs.RandomCacheEnv import RandomCacheEnv
 from envs.SacCacheEnv import SacCacheEnv
-from envs.WolpertingerCacheEnv import WolpertingerCacheEnv
